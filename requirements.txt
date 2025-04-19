@@ -1,3 +1,4 @@
+json
 opencv-python-headless
 groq
 streamlit
