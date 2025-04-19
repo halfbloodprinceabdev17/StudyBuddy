@@ -31,7 +31,7 @@ st.title("📘 MCQ Quiz App with AI Tutor")
 st.write("Upload an MCQ PDF, answer the questions, and get fun feedback from an AI! 🤖")
 
 if st.button("🔗 Go to Word Play"):
-    st.markdown("[Click here to open Word Play](https://wordplay.vercelapp.com)", unsafe_allow_html=True)
+    st.markdown("[Click here to open Word Play](https://hack4-bengal-edu-games.vercel.app/word-search)", unsafe_allow_html=True)
 
 # Folder to store uploaded PDFs
 pdf_folder = "pdf_files"
