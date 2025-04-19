@@ -3,9 +3,13 @@ import os
 import fitz  # PyMuPDF
 import random
 import re
+from groq_helper import get_llm_feedback, extract_mcqs_with_llm
 
-from mcq_parser import extract_mcqs_from_pdf2 as  extract_mcqs_from_pdf
-from groq_helper import get_llm_feedback
+# --- PDF Extraction Using LLM ---
+def extract_mcqs_from_pdf(file_stream):
+    doc = fitz.open(stream=file_stream.read(), filetype="pdf")
+    text = "\n".join([page.get_text() for page in doc])
+    return extract_mcqs_with_llm(text)
 
 # --- Session State Initialization ---
 if "score" not in st.session_state:
@@ -26,29 +30,12 @@ if "pdf_loaded" not in st.session_state:
 st.title("📘 MCQ Quiz App with AI Tutor")
 st.write("Upload an MCQ PDF, answer the questions, and get fun feedback from an AI! 🤖")
 
+if st.button("🔗 Go to Word Play"):
+    st.markdown("[Click here to open Word Play](https://wordplay.vercelapp.com)", unsafe_allow_html=True)
+
 # Folder to store uploaded PDFs
 pdf_folder = "pdf_files"
 os.makedirs(pdf_folder, exist_ok=True)
-
-# --- PDF Preview ---
-def show_pdf_preview(pdf_file):
-    pdf_file.seek(0)
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    images = []
-    for page_num in range(min(2, doc.page_count)):
-        page = doc.load_page(page_num)
-        pix = page.get_pixmap()
-        img = pix.tobytes("png")
-        images.append(img)
-    st.subheader("📄 PDF Preview")
-    for img in images:
-        st.image(img, use_container_width=True)
-
-# --- Math Pattern ---
-latex_math_pattern = re.compile(r'\\\[(.*?)\\\]', re.DOTALL)
-
-def contains_latex_math(content):
-    return bool(latex_math_pattern.search(content))
 
 # --- Upload New PDF ---
 uploaded_file = st.file_uploader("📤 Upload MCQ PDF", type=["pdf"])
@@ -66,8 +53,6 @@ if uploaded_file:
     st.session_state.current_question = 0
     st.session_state.finished = False
     st.session_state.pdf_loaded = False
-
-    show_pdf_preview(uploaded_file)
 
 # --- Select from Saved PDFs ---
 st.subheader("📁 Previously Uploaded PDFs")
@@ -88,6 +73,10 @@ if st.session_state.pdf_loaded and st.session_state.current_pdf and not st.sessi
     with open(file_path, "rb") as f:
         mcqs = extract_mcqs_from_pdf(f)
 
+    if not mcqs or not isinstance(mcqs, list) or "question" not in mcqs[0]:
+        st.error("❌ Failed to load MCQs from the PDF. Please try again with a clearer or supported file format.")
+        st.stop()
+
     if st.session_state.current_question < len(mcqs):
         i = st.session_state.current_question
         q = mcqs[i]
@@ -102,7 +91,7 @@ if st.session_state.pdf_loaded and st.session_state.current_pdf and not st.sessi
                 selected_option = None
                 for opt in q["options"]:
                     if user_choice in opt:
-                        selected_option = opt[0]
+                        selected_option = opt[0].upper()
                         break
 
                 correct_option = q["answer"]
@@ -122,17 +111,7 @@ if st.session_state.pdf_loaded and st.session_state.current_pdf and not st.sessi
                     st.error("❌ Oops, not quite right!")
                     explanation = get_llm_feedback(q["question"], q["options"], selected_option, correct_option)
                     st.markdown("### 🤖 AI Tutor's Take:")
-                    if contains_latex_math(explanation):
-                        st.latex(explanation)
-                    else:
-                        formatted_explanation = explanation.replace('\n', '<br>')
-                        st.markdown(
-                            f"""
-                            <div style='background-color:#f9f9f9;color:#000000;padding:15px;
-                            border-radius:10px;border-left:5px solid #4CAF50;'>{formatted_explanation}</div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                    st.markdown(explanation)
                     sad_gifs = [
                         "https://media.giphy.com/media/3o6ZtaO9BZHcOjmErm/giphy.gif",
                         "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif",
