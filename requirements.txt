@@ -1,0 +1,7 @@
+streamlit
+PyMuPDF
+pdf2image
+pytesseract
+opencv-python
+Pillow
+python-dotenv
